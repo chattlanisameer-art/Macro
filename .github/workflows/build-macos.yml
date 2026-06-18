@@ -1,0 +1,57 @@
+name: Build macOS app
+
+# Builds the standalone .app on a real macOS runner and attaches the zip
+# to a GitHub Release whenever a v* tag is pushed. Can also be run manually.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write   # required to create the release and upload the asset
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build .app and zip
+        run: |
+          pyinstaller MyMacroRecorder.spec --noconfirm
+          ditto -c -k --sequesterRsrc --keepParent "dist/MyMacroRecorder.app" "MyMacroRecorder.app.zip"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MyMacroRecorder-app
+          path: MyMacroRecorder.app.zip
+
+      - name: Create / update GitHub Release with the zip
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: MyMacroRecorder.app.zip
+          name: MyMacroRecorder ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          body: |
+            Standalone macOS macro recorder built on a macOS runner.
+
+            **Download `MyMacroRecorder.app.zip` below**, unzip, and launch.
+
+            - Requires **Accessibility** + **Input Monitoring** permission
+              (System Settings → Privacy & Security).
+            - The app is **not notarized**, so the first launch needs
+              **right-click → Open** (or "Open Anyway" in Privacy & Security).
