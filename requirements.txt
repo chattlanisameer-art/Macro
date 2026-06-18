@@ -1,0 +1,4 @@
+pynput>=1.7.6
+# tkinter ships with the python.org macOS installer (no pip install needed).
+# Build-only dependency (not required to run from source):
+pyinstaller>=6.0
